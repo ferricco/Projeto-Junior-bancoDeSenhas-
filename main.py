@@ -1,7 +1,21 @@
+from datetime import datetime
 import getpass
 import base64
+import csv
 
-senhas = {}
+senhas = []
+
+class Senha:
+    def __init__(self, senha, local, data):
+        self.senha = senha
+        self.local = local
+        self.data = data
+
+    def exibir(self):
+        return f'{self.local}, {self.data}'
+
+    def buscar(self):
+        return f'{self.local}, {self.senha}'
 
 def carregar_senhas():
     try:
@@ -10,9 +24,10 @@ def carregar_senhas():
                 linha = linha.strip()
                 if not linha or "," not in linha:
                     continue
-                chave, valor = linha.split(",")
+                senha, local, data = linha.split(",")
 
-                senhas[chave] = valor
+                cadastro = Senha(local=local, senha=senha, data=data)
+                senhas.append(cadastro)
     except FileNotFoundError:
         print("Esse arquivo não existe!")
 
@@ -20,11 +35,17 @@ def carregar_senhas():
 def adicionar():
     while True:
         local = input("A senha pertence ao login de qual Site?")  # identificar a origem da senha
+
         senha = getpass.getpass(prompt="Digite a senha do login: ", stream=None)
         senha_bytes = senha.encode("utf-8")
         bytes_codificada = base64.b64encode(senha_bytes)
         senha_codificada = bytes_codificada.decode("utf-8")
-        senhas[local] = senha_codificada
+
+        agora = datetime.now()
+        data = agora.strftime("%d/%m/%Y %H:%M:%S")
+
+        cadastro = Senha(senha=senha_codificada, local=local, data=data)
+        senhas.append(cadastro)
 
         salvar_senhas()
 
@@ -41,21 +62,26 @@ def listar():
     if not senhas:
         print("Ainda não existe senhas cadastradas!")
     else:
-        for login in senhas.keys():
-            print(f"{login}")
-
+        for cadastro in senhas:
+            print(cadastro.exibir())
+            print("-" * 30)
 
 def buscar():
     while True:
-        busca = input("Digite o login que você quer buscar a senha: ")
+        encontrado = False
 
-        if busca in senhas:
-            senha = (senhas.get(busca))
-            bytes_codificada = senha.encode("utf-8")
-            bytes_original = base64.b64decode(bytes_codificada)
-            senha_original = bytes_original.decode("utf-8")
-            print(f"{busca}: {senha_original}")
-        else:
+        login = input("Digite o login que você quer buscar a senha: ")
+
+        for cadastro in senhas:
+            if cadastro.local == login:
+                senha = cadastro.senha
+                bytes_codificada = senha.encode("utf-8")
+                bytes_original = base64.b64decode(bytes_codificada)
+                senha_original = bytes_original.decode("utf-8")
+                print(f"{login}: {senha_original}")
+                encontrado = True
+
+        if not encontrado:
             print("Esse login não existe!")
 
         while True:
@@ -96,10 +122,12 @@ def menu():
 
 def salvar_senhas():
     with open('senhas.txt', 'w', encoding='utf-8') as arquivo:
-        for login, senha in senhas.items():
-            arquivo.write(f"{login},{senha}\n")
+        for cadastro in senhas:
+            arquivo.write(f"{cadastro.local},{cadastro.senha},{cadastro.data}\n")
         print("Senha salva com sucesso!")
 
 
 carregar_senhas()
 menu()
+for item in senhas:
+    print(item.local, item.data, item.senha)
